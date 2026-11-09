@@ -36,6 +36,15 @@ Page({
     this.reload();
   },
 
+  review() {
+    const q = this.query;
+    const parts = [];
+    if (q.deckId) parts.push(`deckId=${q.deckId}`);
+    else parts.push(`mode=${q.mode}`);
+    parts.push(`name=${encodeURIComponent(q.name)}`);
+    wx.navigateTo({ url: `/pages/review/review?${parts.join('&')}` });
+  },
+
   openWord(e) {
     wx.navigateTo({ url: `/pages/word/word?id=${e.currentTarget.dataset.id}` });
   }

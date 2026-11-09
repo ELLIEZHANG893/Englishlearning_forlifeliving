@@ -14,6 +14,7 @@ function matchValue(actual, expected) {
       case 'neq': return actual !== v;
       case 'gt': return actual > v;
       case 'lte': return actual <= v;
+      case 'gte': return actual >= v;
       case 'in': return v.includes(actual);
       default: throw new Error('unsupported ' + expected[OP]);
     }
@@ -45,7 +46,7 @@ function createFake() {
         let rows = [...coll(name).values()].filter((d) => Object.entries(cond).every(([k, v]) => matchValue(getPath(d, k), v)));
         if (opts.orderBy) {
           const [f, dir] = opts.orderBy;
-          rows.sort((a, b) => (a[f] > b[f] ? 1 : -1) * (dir === 'desc' ? -1 : 1));
+          rows.sort((a, b) => (getPath(a, f) > getPath(b, f) ? 1 : -1) * (dir === 'desc' ? -1 : 1));
         }
         rows = rows.slice(opts.skip || 0);
         if (opts.limit) rows = rows.slice(0, opts.limit);
@@ -65,7 +66,7 @@ function createFake() {
   const db = {
     command: {
       inc: (v) => cmd('inc', v), lt: (v) => cmd('lt', v), gt: (v) => cmd('gt', v),
-      lte: (v) => cmd('lte', v), neq: (v) => cmd('neq', v), in: (v) => cmd('in', v),
+      lte: (v) => cmd('lte', v), gte: (v) => cmd('gte', v), neq: (v) => cmd('neq', v), in: (v) => cmd('in', v),
       aggregate: {}
     },
     serverDate: () => new Date(),
@@ -95,16 +96,18 @@ function createFake() {
   };
 
   const ctx = { openid: 'user_a' };
+  const sentMessages = [];
   const sdk = {
     DYNAMIC_CURRENT_ENV: 'test',
     init() {},
     database: () => db,
     getWXContext: () => ({ OPENID: ctx.openid }),
+    openapi: { subscribeMessage: { async send(msg) { sentMessages.push(msg); } } },
     async downloadFile({ fileID }) {
       return { fileContent: files[fileID] || Buffer.from('fake-image') };
     }
   };
-  return { sdk, store, ctx };
+  return { sdk, store, ctx, sentMessages };
 }
 
 module.exports = { createFake };

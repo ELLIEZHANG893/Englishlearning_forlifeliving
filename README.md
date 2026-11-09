@@ -14,6 +14,7 @@ miniprogram/            小程序前端
   pages/word            单词卡：音标、美/英发音、例句、搭配、易混词、英美差异、改分类
   pages/decks           卡包：按物品类别 / 按拍摄地点切换，自定义卡包
   pages/deck            卡包里的单词列表
+  pages/review          复习：看图说词、听音选图、看中文选英文
 cloudfunctions/api      唯一的云函数，按 action 分发
   lib/                  额度、模型调用、提示词、结果清洗
   test/                 单元测试和用内存数据库跑的流程测试
@@ -38,9 +39,26 @@ docs/                   需求文档
    | `AI_VISION_MODEL` | 选填，识图模型，默认 `qwen-vl-max` |
    | `AI_TEXT_MODEL` | 选填，生成单词详情的模型，默认 `qwen-plus` |
    | `PAYMENT_ENABLED` | 选填，`true` 时显示「购买点数」入口。个人主体阶段保持不填 |
+   | `REMIND_TEMPLATE_ID` | 选填，每日复习提醒的订阅消息模板 ID，见下方「复习提醒」 |
 
    云函数超时时间建议调到 30 秒（识别需要几秒）。
 6. 把发音域名 `https://dict.youdao.com` 加到小程序后台的 request / downloadFile 合法域名（开发阶段可以在开发者工具里勾选「不校验合法域名」）。
+
+## 复习提醒
+
+1. 在小程序后台「订阅消息」里选一个学习提醒类的一次性订阅模板。
+2. 把模板 ID 同时填到 `miniprogram/config.js` 的 `reviewTemplateId` 和云函数环境变量 `REMIND_TEMPLATE_ID`。
+3. 检查 `cloudfunctions/api/index.js` 里的 `REMIND_FIELDS`，字段名（如 `thing1`、`thing2`）要和所选模板一致。
+4. 上传云函数时会按 `cloudfunctions/api/config.json` 创建定时触发器，每天 20:00 给有待复习单词、且订阅过的用户发一条提醒。部署后在云开发控制台确认触发器的时区和时间。
+
+微信一次性订阅消息的规则是用户每同意一次才能发一条，所以复习完成页会再请用户订阅一次。
+
+## 复习规则
+
+- 新词第二天开始复习，间隔 1 → 2 → 4 → 7 → 15 → 30 天
+- 记得 / 答对：进入下一轮；模糊：本轮间隔再来；忘了 / 答错：明天再复习，并在本轮末尾再看一遍
+- 连续记住 6 轮算「已掌握」
+- 题型：看图说词（自评）、听音选图（需要至少 4 张照片）、看中文选英文，随机出
 
 ## 测试
 

@@ -147,3 +147,50 @@ test('修改卡片类别和地点要校验取值', async () => {
   assert.equal((await call('updateCard', { cardId: card._id, deckIds: [d.data.deckId] })).ok, true);
   assert.equal((await call('createDeck', { name: '出国前要会的' })).code, 'BAD_REQUEST');
 });
+
+test('复习：只取到期的卡，提交后按排期顺延，并记连续学习天数', async () => {
+  fake.ctx.openid = 'user_a';
+  const mine = [...fake.store.cards.values()].filter((c) => c.openid === 'user_a');
+  mine[0].review.nextReviewAt = new Date(Date.now() - 1000);
+  const s = await call('getReviewSession');
+  assert.equal(s.ok, true);
+  assert.deepEqual(s.data.questions.map((q) => q.cardId), [mine[0]._id]);
+
+  const r = await call('submitReview', { cardId: mine[0]._id, grade: 'good' });
+  assert.equal(r.ok, true);
+  assert.equal(r.data.stage, 1);
+  assert.equal((await call('getReviewSession')).data.questions.length, 0);
+  assert.equal((await call('getProfile')).data.stats.streak, 1);
+  assert.equal((await call('submitReview', { cardId: mine[0]._id, grade: 'meh' })).code, 'BAD_REQUEST');
+});
+
+test('复习：不能提交别人的卡', async () => {
+  fake.ctx.openid = 'user_a';
+  const bCard = [...fake.store.cards.values()].find((x) => x.openid === 'user_b');
+  assert.equal((await call('submitReview', { cardId: bCard._id, grade: 'good' })).code, 'NOT_FOUND');
+});
+
+test('提醒：定时触发只给有到期词且订阅过的人发，并用掉一次订阅', async () => {
+  process.env.REMIND_TEMPLATE_ID = 'tmpl';
+  fake.ctx.openid = 'user_a';
+  await call('subscribeReminder');
+  fake.ctx.openid = 'user_c';
+  await call('subscribeReminder');
+  const aCard = [...fake.store.cards.values()].find((x) => x.openid === 'user_a');
+  aCard.review.nextReviewAt = new Date(Date.now() - 1000);
+
+  fake.ctx.openid = undefined;
+  const res = await main({ Type: 'Timer' });
+  assert.equal(res.sent, 1);
+  assert.equal(fake.sentMessages[0].touser, 'user_a');
+  assert.equal(fake.store.users.get('user_a').reminderSubs, 0);
+  assert.equal(fake.store.users.get('user_c').reminderSubs, 1, '没有到期词的人保留订阅');
+});
+
+test('小程序端伪造定时触发无效', async () => {
+  fake.ctx.openid = 'user_a';
+  const before = fake.sentMessages.length;
+  const res = await main({ Type: 'Timer' });
+  assert.equal(res.ok, false);
+  assert.equal(fake.sentMessages.length, before);
+});

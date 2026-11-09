@@ -4,6 +4,7 @@
     "pages/decks/decks",
     "pages/result/result",
     "pages/word/word",
+    "pages/review/review",
     "pages/deck/deck"
   ],
   "window": {
@@ -18,8 +19,14 @@
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
-      { "pagePath": "pages/index/index", "text": "拍一拍" },
-      { "pagePath": "pages/decks/decks", "text": "卡包" }
+      {
+        "pagePath": "pages/index/index",
+        "text": "拍一拍"
+      },
+      {
+        "pagePath": "pages/decks/decks",
+        "text": "卡包"
+      }
     ]
   },
   "style": "v2",
