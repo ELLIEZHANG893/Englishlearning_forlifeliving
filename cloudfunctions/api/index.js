@@ -397,7 +397,69 @@ async function subscribeReminder(openid) {
   return { reminderSubs: user.reminderSubs };
 }
 
+// ---------- 分享 ----------
+
+// 公开给好友看的字段（不含复习记录、卡包等个人数据）
+function publicCard(card) {
+  const d = card.detail || {};
+  return {
+    cardId: card._id,
+    en: card.en,
+    zh: card.zh,
+    phonetic: d.phonetic || {},
+    examples: d.examples || [],
+    collocations: d.collocations || [],
+    confusables: d.confusables || null,
+    usUk: d.usUk || null
+  };
+}
+
+async function tempUrl(fileID) {
+  try {
+    const r = await cloud.getTempFileURL({ fileList: [fileID] });
+    return (r.fileList[0] && r.fileList[0].tempFileURL) || '';
+  } catch (e) {
+    return '';
+  }
+}
+
+// 主人点分享时把卡片标为可公开查看
+async function shareCard(openid, { cardId }) {
+  const card = await ownedCard(openid, cardId);
+  if (!card.shared) await cards().doc(cardId).update({ data: { shared: true, sharedAt: db.serverDate() } });
+  return { shared: true };
+}
+
+// 好友打开分享链接 / 扫小程序码看到的卡片；只有主人分享过的卡片能看
+async function getSharedCard(openid, { cardId }) {
+  const card = typeof cardId === 'string' && cardId && await getDoc(cards(), cardId);
+  const isOwner = !!card && card.openid === openid;
+  if (!card || (!card.shared && !isOwner)) throw new AppError('NOT_FOUND', '这张卡片不存在或没有公开');
+  return Object.assign(publicCard(card), { photoUrl: await tempUrl(card.fileID), isOwner });
+}
+
+// 海报需要的小程序码。小程序还没发布时会失败，前端就画不带码的海报
+async function getPoster(openid, { cardId }) {
+  const card = await ownedCard(openid, cardId);
+  if (!card.shared) await cards().doc(cardId).update({ data: { shared: true, sharedAt: db.serverDate() } });
+  let qrcode = '';
+  try {
+    const res = await cloud.openapi.wxacode.getUnlimited({
+      scene: cardId,
+      page: 'pages/share/share',
+      checkPath: false,
+      envVersion: process.env.QRCODE_ENV_VERSION || 'release',
+      width: 280
+    });
+    qrcode = Buffer.from(res.buffer).toString('base64');
+  } catch (e) {
+    console.error('wxacode failed', e.errCode || e.message);
+  }
+  return { card: publicCard(card), fileID: card.fileID, qrcode };
+}
+
 const handlers = {
+  shareCard, getSharedCard, getPoster,
   getProfile, recognize, saveSelections, getCard, listDecks, listCards, updateCard, createDeck, deleteCard, setVoice,
   getReviewSession, submitReview, subscribeReminder
 };

@@ -151,12 +151,17 @@ Page({
     });
   },
 
+  openPoster() {
+    wx.navigateTo({ url: `/pages/poster/poster?id=${this.cardId}` });
+  },
+
+  // 转发给好友：先把卡片标为公开，好友点开进入只读的分享页
   onShareAppMessage() {
     const c = this.data.card;
+    call('shareCard', { cardId: this.cardId }).catch(() => {});
     return {
       title: c ? `${c.zh} 用英语怎么说？` : '随手拍英语',
-      path: '/pages/index/index',
-      imageUrl: c ? c.fileID : undefined
+      path: `/pages/share/share?id=${this.cardId}`
     };
   }
 });

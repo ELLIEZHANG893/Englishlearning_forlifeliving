@@ -102,7 +102,18 @@ function createFake() {
     init() {},
     database: () => db,
     getWXContext: () => ({ OPENID: ctx.openid }),
-    openapi: { subscribeMessage: { async send(msg) { sentMessages.push(msg); } } },
+    openapi: {
+      subscribeMessage: { async send(msg) { sentMessages.push(msg); } },
+      wxacode: {
+        async getUnlimited(opts) {
+          if (ctx.qrFails) throw Object.assign(new Error('page not found'), { errCode: 41030 });
+          return { buffer: Buffer.from(`qr:${opts.scene}`) };
+        }
+      }
+    },
+    async getTempFileURL({ fileList }) {
+      return { fileList: fileList.map((f) => ({ fileID: f, tempFileURL: `https://tmp/${f}` })) };
+    },
     async downloadFile({ fileID }) {
       return { fileContent: files[fileID] || Buffer.from('fake-image') };
     }

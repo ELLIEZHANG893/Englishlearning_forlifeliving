@@ -5,7 +5,9 @@
     "pages/result/result",
     "pages/word/word",
     "pages/review/review",
-    "pages/deck/deck"
+    "pages/deck/deck",
+    "pages/share/share",
+    "pages/poster/poster"
   ],
   "window": {
     "navigationBarTitleText": "随手拍英语",
