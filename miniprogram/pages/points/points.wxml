@@ -1,0 +1,31 @@
+<view class="container" wx:if="{{quota}}">
+  <view class="card balance">
+    <view class="muted">点数余额</view>
+    <view class="num">{{quota.points}}</view>
+    <view class="muted">今日免费还剩 {{quota.freeLeft}} 次 · 免费次数用完后每次识别用 1 点</view>
+  </view>
+
+  <block wx:if="{{canBuy}}">
+    <view class="section-title">购买点数</view>
+    <view class="pkgs">
+      <view class="pkg" wx:for="{{packages}}" wx:key="id" data-id="{{item.id}}" bindtap="buy">
+        <view wx:if="{{item.tag}}" class="pkg-tag">{{item.tag}}</view>
+        <view class="pkg-title">{{item.title}}</view>
+        <view class="pkg-price">{{item.priceText}}</view>
+      </view>
+    </view>
+    <view class="muted tip">点数长期有效；一张照片选多个物品只用 1 点，学过的词不扣</view>
+  </block>
+  <view wx:elif="{{iosBlocked}}" class="card muted">由于平台规则，iOS 暂不支持购买点数，可以在安卓手机上购买，点数通用。</view>
+  <view wx:else class="card muted">购买功能即将开放，每天的 10 次免费识别照常可用。</view>
+
+  <view wx:if="{{logs.length}}">
+    <view class="section-title records">点数记录</view>
+    <view class="card">
+      <view class="row between log" wx:for="{{logs}}" wx:key="_id">
+        <view><text>{{item.reasonText}}</text> <text class="muted">{{item.timeText}}</text></view>
+        <text class="{{item.delta > 0 ? 'plus' : ''}}">{{item.delta > 0 ? '+' : ''}}{{item.delta}}</text>
+      </view>
+    </view>
+  </view>
+</view>

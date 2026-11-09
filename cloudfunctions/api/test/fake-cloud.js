@@ -101,7 +101,20 @@ function createFake() {
     DYNAMIC_CURRENT_ENV: 'test',
     init() {},
     database: () => db,
-    getWXContext: () => ({ OPENID: ctx.openid }),
+    getWXContext: () => ({ OPENID: ctx.openid, ENV: 'test-env' }),
+    cloudPay: {
+      orders: {},
+      async unifiedOrder(o) {
+        sdk.cloudPay.lastUnified = o;
+        if (ctx.payFails) return { returnCode: 'FAIL' };
+        sdk.cloudPay.orders[o.outTradeNo] = { totalFee: o.totalFee, tradeState: 'NOTPAY' };
+        return { returnCode: 'SUCCESS', resultCode: 'SUCCESS', payment: { timeStamp: '1', nonceStr: 'n', package: 'prepay_id=x', signType: 'MD5', paySign: 's' } };
+      },
+      async queryOrder({ outTradeNo }) {
+        const o = sdk.cloudPay.orders[outTradeNo];
+        return o ? { returnCode: 'SUCCESS', tradeState: o.tradeState, totalFee: o.totalFee, transactionId: 'wx_' + outTradeNo } : { tradeState: 'NOTEXIST' };
+      }
+    },
     openapi: {
       subscribeMessage: { async send(msg) { sentMessages.push(msg); } },
       wxacode: {

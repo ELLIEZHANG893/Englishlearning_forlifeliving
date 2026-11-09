@@ -17,6 +17,7 @@ miniprogram/            小程序前端
   pages/review          复习：看图说词、听音选图、看中文选英文
   pages/poster          生成分享图（照片 + 单词 + 例句 + 小程序码），保存或直接分享
   pages/share           好友打开分享链接 / 扫码看到的只读单词卡
+  pages/points          点数余额、购买点数、点数记录
 cloudfunctions/api      唯一的云函数，按 action 分发
   lib/                  额度、模型调用、提示词、结果清洗
   test/                 单元测试和用内存数据库跑的流程测试
@@ -28,7 +29,7 @@ docs/                   需求文档
 1. 安装 [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)，导入本仓库根目录。
    - 还没有 AppID 时可以先用「测试号」，但云开发需要正式 AppID。拿到 AppID 后改 `project.config.json` 里的 `appid`。
 2. 在开发者工具里点「云开发」开通环境，把环境 ID 填到 `miniprogram/config.js` 的 `cloudEnv`。
-3. 在云开发控制台的数据库里创建集合：`users`、`cards`、`words`、`decks`、`recognitions`、`point_logs`。
+3. 在云开发控制台的数据库里创建集合：`users`、`cards`、`words`、`decks`、`recognitions`、`point_logs`、`orders`。
    权限都设为「仅管理端可读写」，所有读写都通过云函数完成。
    建议给 `cards` 建索引：`openid + wordKey`、`openid + createdAt`、`openid + category`、`openid + place`；给 `words` 建 `wordKey` 唯一索引。
 4. 右键 `cloudfunctions/api` →「上传并部署：云端安装依赖」。
@@ -41,11 +42,24 @@ docs/                   需求文档
    | `AI_VISION_MODEL` | 选填，识图模型，默认 `qwen-vl-max` |
    | `AI_TEXT_MODEL` | 选填，生成单词详情的模型，默认 `qwen-plus` |
    | `PAYMENT_ENABLED` | 选填，`true` 时显示「购买点数」入口。个人主体阶段保持不填 |
+   | `PAY_SUB_MCH_ID` | 开通购买时必填，云开发控制台绑定的微信支付商户号 |
+   | `IOS_PAYMENT_ENABLED` | 选填，`true` 时 iOS 也显示购买入口。确认平台规则允许前保持不填 |
    | `QRCODE_ENV_VERSION` | 选填，分享图上小程序码打开的版本：`release`（默认）、`trial` 体验版、`develop` 开发版。没发布前想测扫码可以设成 `trial` |
    | `REMIND_TEMPLATE_ID` | 选填，每日复习提醒的订阅消息模板 ID，见下方「复习提醒」 |
 
    云函数超时时间建议调到 30 秒（识别需要几秒）。
 6. 把发音域名 `https://dict.youdao.com` 加到小程序后台的 request / downloadFile 合法域名（开发阶段可以在开发者工具里勾选「不校验合法域名」）。
+
+## 开通点数购买（迁移到个体工商户 / 企业主体之后）
+
+代码已经写好，默认关闭。个人主体开不了微信支付，所以要等主体迁移完成后再开：
+
+1. 在微信公众平台完成主体迁移，开通微信支付，拿到商户号。
+2. 在云开发控制台「设置 → 其他设置 → 微信支付配置」绑定商户号，并在商户平台确认授权。
+3. 给云函数 `api` 加环境变量 `PAY_SUB_MCH_ID=商户号`、`PAYMENT_ENABLED=true`，重新部署。不需要重新发版小程序。
+4. iOS 上卖虚拟商品有平台限制，`IOS_PAYMENT_ENABLED` 先不要开；iOS 用户会看到「请在安卓上购买，点数通用」。
+
+到账规则：支付回调和小程序端主动确认都会触发加点，但都先向微信支付查询订单确实已支付、金额一致，同一订单只加一次。
 
 ## 复习提醒
 
