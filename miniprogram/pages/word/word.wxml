@@ -1,0 +1,67 @@
+<view class="container" wx:if="{{card}}">
+  <view class="card head">
+    <image class="thumb" src="{{card.fileID}}" mode="aspectFill" bindtap="previewPhoto" />
+    <view class="head-main">
+      <view class="en" bindtap="speak">{{card.en}} <text class="speaker">🔊</text></view>
+      <view class="phonetic">{{voice === 'us' ? card.detail.phonetic.us : card.detail.phonetic.uk}}</view>
+      <view class="zh">{{card.zh}}</view>
+      <view class="voice">
+        <text class="voice-btn {{voice === 'us' ? 'voice-on' : ''}}" data-v="us" bindtap="switchVoice">美音</text>
+        <text class="voice-btn {{voice === 'uk' ? 'voice-on' : ''}}" data-v="uk" bindtap="switchVoice">英音</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">生活里这么说</view>
+    <view class="example" wx:for="{{card.detail.examples}}" wx:key="en" data-text="{{item.en}}" bindtap="speakText">
+      <view class="ex-en">{{item.en}} <text class="speaker-sm">🔊</text></view>
+      <view class="muted">{{item.zh}}</view>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{card.detail.collocations.length}}">
+    <view class="section-title">常用搭配</view>
+    <view class="colloc" wx:for="{{card.detail.collocations}}" wx:key="en" data-text="{{item.en}}" bindtap="speakText">
+      <text class="colloc-en">{{item.en}}</text>
+      <text class="muted">{{item.zh}}</text>
+    </view>
+  </view>
+
+  <view class="card" wx:if="{{card.detail.confusables}}">
+    <view class="section-title">别搞混</view>
+    <view class="row wrap">
+      <text class="tag" wx:for="{{card.detail.confusables.words}}" wx:key="*this">{{item}}</text>
+    </view>
+    <view class="explain">{{card.detail.confusables.explanation}}</view>
+  </view>
+
+  <view class="card" wx:if="{{card.detail.usUk}}">
+    <view class="section-title">美式 vs 英式</view>
+    <view class="row usuk">
+      <view class="usuk-col"><view class="muted">美式</view><view class="usuk-word" data-text="{{card.detail.usUk.us}}" bindtap="speakText">{{card.detail.usUk.us}}</view></view>
+      <view class="usuk-col"><view class="muted">英式</view><view class="usuk-word" data-text="{{card.detail.usUk.uk}}" bindtap="speakText">{{card.detail.usUk.uk}}</view></view>
+    </view>
+    <view class="explain" wx:if="{{card.detail.usUk.note}}">{{card.detail.usUk.note}}</view>
+  </view>
+
+  <view class="card">
+    <view class="section-title">所在卡包</view>
+    <picker range="{{categories}}" value="{{categoryIndex}}" bindchange="onCategoryChange">
+      <view class="row between line"><text>物品类别</text><text class="muted">{{card.category}} ›</text></view>
+    </picker>
+    <picker range="{{places}}" value="{{placeIndex}}" bindchange="onPlaceChange">
+      <view class="row between line"><text>拍摄地点</text><text class="muted">{{card.place}} ›</text></view>
+    </picker>
+    <view class="row between line" bindtap="onCustomDeck">
+      <text>自定义卡包</text>
+      <text class="muted"><block wx:for="{{decks}}" wx:key="_id">{{item.name}} </block>{{decks.length ? '' : '未加入'}} ›</text>
+    </view>
+    <view class="muted created" wx:if="{{createdText}}">{{createdText}} 加入</view>
+  </view>
+
+  <view class="actions row">
+    <button class="btn-ghost act" open-type="share">分享给好友</button>
+    <button class="act del" bindtap="onDelete">删除</button>
+  </view>
+</view>

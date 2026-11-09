@@ -1,0 +1,7 @@
+.toolbar { margin-bottom: 20rpx; }
+.sort { color: var(--accent); font-size: 26rpx; }
+.item { display: flex; align-items: center; padding: 20rpx; }
+.img { width: 120rpx; height: 120rpx; border-radius: 16rpx; flex-shrink: 0; background: var(--line); }
+.main { flex: 1; margin-left: 24rpx; min-width: 0; }
+.en { font-size: 34rpx; font-weight: 700; }
+.center { text-align: center; }
