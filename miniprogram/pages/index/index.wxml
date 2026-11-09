@@ -6,9 +6,10 @@
       <view class="snap-icon">📷</view>
       <view>拍一拍</view>
     </button>
-    <view class="quota" wx:if="{{quota}}">
+    <view class="quota" wx:if="{{quota}}" bindtap="goPoints">
       今日剩余 <text class="num">{{quota.freeLeft}}</text> 次
       <text wx:if="{{quota.points > 0}}"> · 点数 <text class="num">{{quota.points}}</text></text>
+      <text> ›</text>
     </view>
   </view>
 

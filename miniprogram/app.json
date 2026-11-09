@@ -7,7 +7,8 @@
     "pages/review/review",
     "pages/deck/deck",
     "pages/share/share",
-    "pages/poster/poster"
+    "pages/poster/poster",
+    "pages/points/points"
   ],
   "window": {
     "navigationBarTitleText": "随手拍英语",

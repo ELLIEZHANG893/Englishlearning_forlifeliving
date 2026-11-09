@@ -7,6 +7,7 @@ const { wordKey } = require('./lib/words');
 const { config: aiConfig, chatJson } = require('./lib/ai');
 const { detectPrompt, detailPrompt } = require('./lib/prompts');
 const { normalizeDetection, normalizeDetail } = require('./lib/normalize');
+const { PACKAGES, findPackage, newOrderNo } = require('./lib/points');
 const { MASTERED_STAGE, schedule, nextStreak, currentStreak, buildQuestion } = require('./lib/review');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
@@ -28,6 +29,12 @@ class AppError extends Error {
 }
 
 const paymentEnabled = () => process.env.PAYMENT_ENABLED === 'true';
+// iOS 上卖虚拟商品受平台限制，单独开关，默认关闭
+const iosPaymentEnabled = () => process.env.IOS_PAYMENT_ENABLED === 'true';
+
+function quotaView(user, today) {
+  return Object.assign(summarize(user, today, paymentEnabled()), { iosPaymentEnabled: iosPaymentEnabled() });
+}
 
 async function getDoc(coll, id) {
   try { return (await coll.doc(id).get()).data; } catch (e) { return null; }
@@ -76,7 +83,7 @@ async function getProfile(openid) {
       .field({ en: true, zh: true, fileID: true }).get()
   ]);
   return {
-    quota: summarize(user, today, paymentEnabled()),
+    quota: quotaView(user, today),
     voice: user.voice || 'us',
     stats: {
       cardCount: total.total,
@@ -95,7 +102,7 @@ async function recognize(openid, { fileID, imageWidth, imageHeight }) {
   if (typeof fileID !== 'string' || !fileID.startsWith('cloud://')) throw new AppError('BAD_REQUEST', '图片无效');
   const today = beijingDate();
   const user = await ensureUser(openid, today);
-  const quota = summarize(user, today, paymentEnabled());
+  const quota = quotaView(user, today);
   if (!quota.canRecognize) throw new AppError('QUOTA_EXCEEDED', '今日免费次数已用完，明天再来吧', { quota });
   if (quota.detectLimitReached) throw new AppError('DETECT_LIMIT', '今天识别得太多啦，休息一下明天再来');
 
@@ -205,7 +212,7 @@ async function saveSelections(openid, { recognitionId, selections }) {
   const today = beijingDate();
   let user = await ensureUser(openid, today);
   if (toCreate.length && !rec.charged && !chargeSource(user, today)) {
-    throw new AppError('QUOTA_EXCEEDED', '今日免费次数已用完，明天再来吧', { quota: summarize(user, today, paymentEnabled()) });
+    throw new AppError('QUOTA_EXCEEDED', '今日免费次数已用完，明天再来吧', { quota: quotaView(user, today) });
   }
 
   // 先生成详情（失败不扣次数）
@@ -218,7 +225,7 @@ async function saveSelections(openid, { recognitionId, selections }) {
       if (!source) {
         await recognitions().doc(recognitionId).update({ data: { charged: false } });
         user = await ensureUser(openid, today);
-        throw new AppError('QUOTA_EXCEEDED', '今日免费次数已用完，明天再来吧', { quota: summarize(user, today, paymentEnabled()) });
+        throw new AppError('QUOTA_EXCEEDED', '今日免费次数已用完，明天再来吧', { quota: quotaView(user, today) });
       }
     }
   }
@@ -259,7 +266,7 @@ async function saveSelections(openid, { recognitionId, selections }) {
 
   if (result.some((c) => c.isNew)) await touchStreak(openid, today);
   user = await ensureUser(openid, today);
-  return { cards: result, quota: summarize(user, today, paymentEnabled()) };
+  return { cards: result, quota: quotaView(user, today) };
 }
 
 // ---------- 卡片与卡包 ----------
@@ -458,7 +465,96 @@ async function getPoster(openid, { cardId }) {
   return { card: publicCard(card), fileID: card.fileID, qrcode };
 }
 
+// ---------- 点数购买（微信云开发 云调用支付） ----------
+// 需要：小程序是企业 / 个体工商户主体、开通微信支付并在云开发控制台绑定商户号
+//   PAYMENT_ENABLED=true 打开购买入口；PAY_SUB_MCH_ID 为绑定的商户号
+const orders = () => db.collection('orders');
+const nonce = () => Math.random().toString(36).slice(2, 18);
+
+async function getPointsInfo(openid) {
+  const today = beijingDate();
+  const user = await ensureUser(openid, today);
+  const logs = await db.collection('point_logs').where({ openid }).orderBy('createdAt', 'desc').limit(20).get();
+  return { quota: quotaView(user, today), packages: PACKAGES, logs: logs.data };
+}
+
+async function createOrder(openid, { packageId }) {
+  if (!paymentEnabled() || !process.env.PAY_SUB_MCH_ID) throw new AppError('PAYMENT_DISABLED', '购买功能暂未开放');
+  const pkg = findPackage(packageId);
+  if (!pkg) throw new AppError('BAD_REQUEST', '套餐无效');
+  const outTradeNo = newOrderNo();
+  await orders().add({
+    data: { outTradeNo, openid, packageId: pkg.id, points: pkg.points, totalFee: pkg.totalFee, status: 'pending', createdAt: db.serverDate() }
+  });
+  let res;
+  try {
+    res = await cloud.cloudPay.unifiedOrder({
+      body: `随手拍英语-${pkg.title}`,
+      outTradeNo,
+      spbillCreateIp: '127.0.0.1',
+      subMchId: process.env.PAY_SUB_MCH_ID,
+      totalFee: pkg.totalFee,
+      envId: cloud.getWXContext().ENV,
+      functionName: 'api',
+      nonceStr: nonce(),
+      tradeType: 'JSAPI'
+    });
+  } catch (e) {
+    console.error('unifiedOrder failed', e);
+    res = null;
+  }
+  if (!res || res.returnCode !== 'SUCCESS' || res.resultCode !== 'SUCCESS' || !res.payment) {
+    await orders().where({ outTradeNo }).update({ data: { status: 'failed' } });
+    throw new AppError('PAY_ERROR', '下单失败，请稍后再试');
+  }
+  return { outTradeNo, payment: res.payment };
+}
+
+// 向微信支付确认订单已支付后再加点数；可重复调用，只会加一次
+async function creditOrder(outTradeNo) {
+  const found = await orders().where({ outTradeNo }).limit(1).get();
+  const order = found.data[0];
+  if (!order) return { status: 'not_found' };
+  if (order.status === 'paid') return { status: 'paid', order };
+  const q = await cloud.cloudPay.queryOrder({ subMchId: process.env.PAY_SUB_MCH_ID, outTradeNo, nonceStr: nonce() });
+  if (!q || q.tradeState !== 'SUCCESS') return { status: 'unpaid', order };
+  if (Number(q.totalFee) !== order.totalFee) {
+    console.error('totalFee mismatch', outTradeNo, q.totalFee, order.totalFee);
+    return { status: 'mismatch', order };
+  }
+  const mark = await orders().where({ outTradeNo, status: _.neq('paid') })
+    .update({ data: { status: 'paid', transactionId: q.transactionId || '', paidAt: db.serverDate() } });
+  if (mark.stats.updated === 1) {
+    await ensureUser(order.openid, beijingDate());
+    await users().doc(order.openid).update({ data: { points: _.inc(order.points) } });
+    await db.collection('point_logs').add({
+      data: { openid: order.openid, delta: order.points, reason: 'purchase', outTradeNo, createdAt: db.serverDate() }
+    });
+  }
+  return { status: 'paid', order };
+}
+
+// 小程序端支付成功后主动确认（支付回调可能稍晚到）
+async function confirmOrder(openid, { outTradeNo }) {
+  const found = typeof outTradeNo === 'string' && (await orders().where({ outTradeNo, openid }).limit(1).get()).data[0];
+  if (!found) throw new AppError('NOT_FOUND', '订单不存在');
+  const r = await creditOrder(outTradeNo);
+  const user = await ensureUser(openid, beijingDate());
+  return { paid: r.status === 'paid', quota: quotaView(user, beijingDate()) };
+}
+
+// 微信支付回调：不直接相信回调内容，而是以 queryOrder 的结果为准
+async function handlePayCallback(event) {
+  try {
+    await creditOrder(event.outTradeNo);
+  } catch (e) {
+    console.error('pay callback failed', event.outTradeNo, e);
+  }
+  return { errcode: 0, errmsg: '' };
+}
+
 const handlers = {
+  getPointsInfo, createOrder, confirmOrder,
   shareCard, getSharedCard, getPoster,
   getProfile, recognize, saveSelections, getCard, listDecks, listCards, updateCard, createDeck, deleteCard, setVoice,
   getReviewSession, submitReview, subscribeReminder
@@ -504,6 +600,8 @@ exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
   // 定时触发器调用时没有 OPENID；小程序端的调用一定带 OPENID，伪造不了
   if (!OPENID && event && event.Type === 'Timer') return sendReminders();
+  // 支付回调同样不带 OPENID
+  if (!OPENID && event && event.outTradeNo && event.returnCode) return handlePayCallback(event);
   if (!OPENID) return { ok: false, code: 'BAD_REQUEST', message: '未登录' };
   const handler = handlers[event && event.action];
   if (!handler) return { ok: false, code: 'BAD_REQUEST', message: '未知操作' };

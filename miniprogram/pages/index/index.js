@@ -1,6 +1,7 @@
 const { call } = require('../../utils/api');
 const { choosePhoto, recognizePhoto } = require('../../utils/photo');
 const { LOW_CONFIDENCE } = require('../../utils/constants');
+const { canBuy } = require('../../utils/platform');
 
 Page({
   data: {
@@ -79,17 +80,21 @@ Page({
   },
 
   showQuotaExceeded(quota) {
-    const canBuy = quota && quota.paymentEnabled;
+    const buy = canBuy(quota);
     wx.showModal({
       title: '今日免费次数已用完',
-      content: canBuy ? '可以购买点数继续识别，或者明天再来～' : '明天 0 点会恢复 10 次免费识别，明天再来吧～',
-      confirmText: canBuy ? '购买点数' : '好的',
-      showCancel: !!canBuy,
+      content: buy ? '可以购买点数继续识别，或者明天再来～' : '明天 0 点会恢复 10 次免费识别，明天再来吧～',
+      confirmText: buy ? '购买点数' : '好的',
+      showCancel: buy,
       cancelText: '明天再来',
       success: (r) => {
-        if (canBuy && r.confirm) wx.showToast({ title: '购买功能即将开放', icon: 'none' });
+        if (buy && r.confirm) this.goPoints();
       }
     });
+  },
+
+  goPoints() {
+    wx.navigateTo({ url: '/pages/points/points' });
   },
 
   openWord(e) {

@@ -1,0 +1,12 @@
+.balance { text-align: center; }
+.num { font-size: 88rpx; font-weight: 800; color: var(--accent); }
+.pkgs { display: flex; justify-content: space-between; }
+.pkg { position: relative; width: 48%; background: var(--card); border-radius: 24rpx; padding: 40rpx 0; text-align: center; border: 3rpx solid var(--line); box-sizing: border-box; }
+.pkg-tag { position: absolute; top: -18rpx; right: 20rpx; background: var(--accent); color: #fff; font-size: 22rpx; padding: 2rpx 16rpx; border-radius: 999rpx; }
+.pkg-title { font-size: 36rpx; font-weight: 700; }
+.pkg-price { color: var(--accent); font-size: 32rpx; margin-top: 8rpx; }
+.tip { margin-top: 20rpx; }
+.records { margin-top: 32rpx; }
+.log { padding: 14rpx 0; border-bottom: 2rpx solid var(--line); }
+.log:last-child { border-bottom: none; }
+.plus { color: #2F855A; font-weight: 600; }
