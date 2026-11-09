@@ -7,6 +7,7 @@ const { wordKey } = require('./lib/words');
 const { config: aiConfig, chatJson } = require('./lib/ai');
 const { detectPrompt, detailPrompt } = require('./lib/prompts');
 const { normalizeDetection, normalizeDetail } = require('./lib/normalize');
+const { MASTERED_STAGE, schedule, nextStreak, currentStreak, buildQuestion } = require('./lib/review');
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -47,6 +48,15 @@ async function ensureUser(openid, today) {
   return user;
 }
 
+const yesterdayOf = () => beijingDate(addDays(new Date(), -1));
+
+// 学了新词或完成复习都算当天学习过
+async function touchStreak(openid, today) {
+  const user = await getDoc(users(), openid);
+  if (user && user.lastStudyDate === today) return;
+  await users().doc(openid).update({ data: nextStreak(user, today, yesterdayOf()) });
+}
+
 async function ownedCard(openid, cardId) {
   const card = cardId && await getDoc(cards(), cardId);
   if (!card || card.openid !== openid) throw new AppError('NOT_FOUND', '卡片不存在');
@@ -58,16 +68,23 @@ async function ownedCard(openid, cardId) {
 async function getProfile(openid) {
   const today = beijingDate();
   const user = await ensureUser(openid, today);
-  const [total, due, recent] = await Promise.all([
+  const [total, due, mastered, recent] = await Promise.all([
     cards().where({ openid }).count(),
     cards().where({ openid, 'review.nextReviewAt': _.lte(new Date()) }).count(),
+    cards().where({ openid, 'review.stage': _.gte(MASTERED_STAGE) }).count(),
     cards().where({ openid }).orderBy('createdAt', 'desc').limit(6)
       .field({ en: true, zh: true, fileID: true }).get()
   ]);
   return {
     quota: summarize(user, today, paymentEnabled()),
     voice: user.voice || 'us',
-    stats: { cardCount: total.total, dueCount: due.total },
+    stats: {
+      cardCount: total.total,
+      dueCount: due.total,
+      masteredCount: mastered.total,
+      streak: currentStreak(user, today, yesterdayOf())
+    },
+    reminderSubs: user.reminderSubs || 0,
     recent: recent.data
   };
 }
@@ -240,6 +257,7 @@ async function saveSelections(openid, { recognitionId, selections }) {
     result.push({ cardId: _id, en: p.en, isNew: true });
   }
 
+  if (result.some((c) => c.isNew)) await touchStreak(openid, today);
   user = await ensureUser(openid, today);
   return { cards: result, quota: summarize(user, today, paymentEnabled()) };
 }
@@ -342,12 +360,89 @@ async function setVoice(openid, { voice }) {
   return { voice };
 }
 
+// ---------- 复习 ----------
+
+const REVIEW_LIMIT = 20;
+const POOL_SIZE = 100;
+
+// 取到期的卡片并出题；可以限定在某个卡包里
+async function getReviewSession(openid, { mode, name, deckId, limit }) {
+  const where = { openid, 'review.nextReviewAt': _.lte(new Date()) };
+  if (deckId) where.deckIds = deckId;
+  else if (name) where[modeField(mode)] = name;
+  const n = Math.min(REVIEW_LIMIT, Math.max(1, Number(limit) || REVIEW_LIMIT));
+  const fields = { en: true, zh: true, wordKey: true, fileID: true, 'detail.phonetic': true, review: true };
+  const [due, pool] = await Promise.all([
+    cards().where(where).orderBy('review.nextReviewAt', 'asc').limit(n).field(fields).get(),
+    cards().where({ openid }).orderBy('createdAt', 'desc').limit(POOL_SIZE).field(fields).get()
+  ]);
+  return { questions: due.data.map((c) => buildQuestion(c, pool.data)) };
+}
+
+async function submitReview(openid, { cardId, grade }) {
+  const card = await ownedCard(openid, cardId);
+  let review;
+  try { review = schedule(card.review, grade); } catch (e) { throw new AppError('BAD_REQUEST', '复习结果无效'); }
+  await cards().doc(cardId).update({ data: { review } });
+  await ensureUser(openid, beijingDate());
+  await touchStreak(openid, beijingDate());
+  return { stage: review.stage, nextReviewAt: review.nextReviewAt, mastered: review.stage >= MASTERED_STAGE };
+}
+
+// 用户每同意一次订阅，就可以给他发一条提醒（微信一次性订阅消息的规则）
+async function subscribeReminder(openid) {
+  await ensureUser(openid, beijingDate());
+  await users().doc(openid).update({ data: { reminderSubs: _.inc(1) } });
+  const user = await getDoc(users(), openid);
+  return { reminderSubs: user.reminderSubs };
+}
+
 const handlers = {
-  getProfile, recognize, saveSelections, getCard, listDecks, listCards, updateCard, createDeck, deleteCard, setVoice
+  getProfile, recognize, saveSelections, getCard, listDecks, listCards, updateCard, createDeck, deleteCard, setVoice,
+  getReviewSession, submitReview, subscribeReminder
 };
+
+// ---------- 每日复习提醒（定时触发） ----------
+// 订阅消息模板在小程序后台选，字段名要和模板对上。这里按「学习提醒」类模板：
+//   thing1 学习内容，thing2 温馨提示。换模板时改 REMIND_FIELDS
+const REMIND_FIELDS = { content: 'thing1', tip: 'thing2' };
+
+async function sendReminders() {
+  const templateId = process.env.REMIND_TEMPLATE_ID;
+  if (!templateId) return { sent: 0, skipped: 'REMIND_TEMPLATE_ID 未配置' };
+  const now = new Date();
+  let sent = 0;
+  let failed = 0;
+  const list = (await users().where({ reminderSubs: _.gt(0) }).limit(100).get()).data;
+  for (const u of list) {
+    const due = await cards().where({ openid: u._id, 'review.nextReviewAt': _.lte(now) }).count();
+    if (!due.total) continue;
+    try {
+      await cloud.openapi.subscribeMessage.send({
+        touser: u._id,
+        templateId,
+        page: 'pages/review/review',
+        data: {
+          [REMIND_FIELDS.content]: { value: `今天有 ${due.total} 个单词待复习` },
+          [REMIND_FIELDS.tip]: { value: '花两分钟复习一下，记得更牢' }
+        }
+      });
+      sent++;
+    } catch (e) {
+      failed++;
+      console.error('remind failed', u._id, e.errCode || e.message);
+    }
+    // 不论成败都用掉这次授权（失败通常是用户已拒收）
+    await users().doc(u._id).update({ data: { reminderSubs: _.inc(-1) } });
+  }
+  return { sent, failed };
+}
 
 exports.main = async (event) => {
   const { OPENID } = cloud.getWXContext();
+  // 定时触发器调用时没有 OPENID；小程序端的调用一定带 OPENID，伪造不了
+  if (!OPENID && event && event.Type === 'Timer') return sendReminders();
+  if (!OPENID) return { ok: false, code: 'BAD_REQUEST', message: '未登录' };
   const handler = handlers[event && event.action];
   if (!handler) return { ok: false, code: 'BAD_REQUEST', message: '未知操作' };
   try {

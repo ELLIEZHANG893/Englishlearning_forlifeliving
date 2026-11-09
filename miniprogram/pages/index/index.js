@@ -6,7 +6,7 @@ Page({
   data: {
     loaded: false,
     quota: null,
-    stats: { cardCount: 0, dueCount: 0 },
+    stats: { cardCount: 0, dueCount: 0, masteredCount: 0, streak: 0 },
     recent: [],
     busy: false
   },
@@ -94,6 +94,10 @@ Page({
 
   openWord(e) {
     wx.navigateTo({ url: `/pages/word/word?id=${e.currentTarget.dataset.id}` });
+  },
+
+  goReview() {
+    wx.navigateTo({ url: '/pages/review/review' });
   },
 
   goDecks() {

@@ -12,16 +12,23 @@
     </view>
   </view>
 
-  <view class="card row between" bindtap="goDecks">
-    <view class="stat">
-      <view class="stat-num">{{stats.cardCount}}</view>
-      <view class="muted">已收集单词</view>
+  <view class="card">
+    <view class="row between" bindtap="goDecks">
+      <view class="stat">
+        <view class="stat-num">{{stats.cardCount}}</view>
+        <view class="muted">已收集</view>
+      </view>
+      <view class="stat">
+        <view class="stat-num">{{stats.masteredCount}}</view>
+        <view class="muted">已掌握</view>
+      </view>
+      <view class="stat">
+        <view class="stat-num">{{stats.streak}}</view>
+        <view class="muted">连续天数</view>
+      </view>
     </view>
-    <view class="stat">
-      <view class="stat-num accent">{{stats.dueCount}}</view>
-      <view class="muted">今日待复习</view>
-    </view>
-    <view class="muted">去卡包 ›</view>
+    <button wx:if="{{stats.dueCount}}" class="btn-primary review-btn" bindtap="goReview">复习今天的 {{stats.dueCount}} 个词</button>
+    <view wx:elif="{{stats.cardCount}}" class="muted done-tip">今天的复习都完成啦</view>
   </view>
 
   <view wx:if="{{recent.length}}">

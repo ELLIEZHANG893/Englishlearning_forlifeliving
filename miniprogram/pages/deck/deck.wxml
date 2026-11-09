@@ -1,7 +1,10 @@
 <view class="container">
   <view class="row between toolbar">
     <text class="muted">{{list.length}}{{hasMore ? '+' : ''}} 个词</text>
-    <text class="sort" bindtap="toggleSort">{{sort === 'new' ? '最新加入 ↓' : '最早加入 ↑'}}</text>
+    <view>
+      <text class="sort" bindtap="review" wx:if="{{list.length}}">复习这个卡包</text>
+      <text class="sort sep" bindtap="toggleSort">{{sort === 'new' ? '最新加入 ↓' : '最早加入 ↑'}}</text>
+    </view>
   </view>
   <view class="item card" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="openWord">
     <image class="img" src="{{item.fileID}}" mode="aspectFill" lazy-load />

@@ -1,0 +1,76 @@
+<view class="container">
+  <view wx:if="{{loading}}" class="empty">加载中…</view>
+
+  <view wx:elif="{{!total}}" class="empty">
+    <view class="big">🎉</view>
+    <view>现在没有要复习的词</view>
+    <view class="muted">新拍的词第二天开始复习</view>
+    <button class="btn-ghost go" bindtap="goSnap">再去拍几个</button>
+  </view>
+
+  <view wx:elif="{{done}}" class="summary">
+    <view class="big">👏</view>
+    <view class="sum-title">复习完成</view>
+    <view class="muted">复习了 {{stats.reviewed}} 个词，记得 {{stats.remembered}} 个</view>
+    <view class="muted">忘了的词明天会再出现</view>
+    <button wx:if="{{canRemind && !reminded}}" class="btn-primary go" bindtap="remind">有词要复习时提醒我</button>
+    <button class="btn-ghost go" bindtap="goHome">回首页</button>
+  </view>
+
+  <block wx:elif="{{q}}">
+    <view class="progress">
+      <view class="bar"><view class="bar-in" style="width:{{finished * 100 / total}}%"></view></view>
+      <text class="muted">{{finished}}/{{total}}</text>
+    </view>
+
+    <!-- 看图说词 -->
+    <view wx:if="{{q.type === 'recall'}}" class="card center">
+      <view class="muted">{{q.retry ? '再看一遍' : '看图，这个英文怎么说？'}}</view>
+      <image class="photo" src="{{q.fileID}}" mode="aspectFill" />
+      <view wx:if="{{revealed}}" class="answer" bindtap="speak">
+        <view class="en">{{q.en}} <text class="speaker">🔊</text></view>
+        <view class="muted">{{voice === 'us' ? q.phonetic.us : q.phonetic.uk}}</view>
+        <view>{{q.zh}}</view>
+      </view>
+    </view>
+    <block wx:if="{{q.type === 'recall'}}">
+      <button wx:if="{{!revealed}}" class="btn-primary act" bindtap="reveal">看答案</button>
+      <view wx:elif="{{q.retry}}"><button class="btn-primary act" data-g="again" bindtap="rate">下一个</button></view>
+      <view wx:else class="rates">
+        <button class="rate rate-again" data-g="again" bindtap="rate">忘了</button>
+        <button class="rate rate-hard" data-g="hard" bindtap="rate">模糊</button>
+        <button class="rate rate-good" data-g="good" bindtap="rate">记得</button>
+      </view>
+    </block>
+
+    <!-- 听音选图 -->
+    <block wx:if="{{q.type === 'listen'}}">
+      <view class="card center">
+        <view class="muted">听发音，选出对应的图</view>
+        <view class="listen" bindtap="speak">🔊 再听一遍</view>
+        <view wx:if="{{revealed}}" class="answer"><view class="en">{{q.en}}</view><view>{{q.zh}}</view></view>
+      </view>
+      <view class="grid">
+        <view wx:for="{{q.options}}" wx:key="cardId" data-i="{{index}}" bindtap="pick"
+          class="opt-img {{revealed && index === q.answer ? 'right' : ''}} {{revealed && index === picked && picked !== q.answer ? 'wrong' : ''}}">
+          <image src="{{item.fileID}}" mode="aspectFill" />
+        </view>
+      </view>
+      <button wx:if="{{revealed}}" class="btn-primary act" bindtap="next">下一个</button>
+    </block>
+
+    <!-- 看中文选英文 -->
+    <block wx:if="{{q.type === 'zh2en'}}">
+      <view class="card center">
+        <view class="muted">这个用英文怎么说？</view>
+        <view class="zh-big">{{q.zh}}</view>
+        <view wx:if="{{revealed}}" class="muted">{{voice === 'us' ? q.phonetic.us : q.phonetic.uk}}</view>
+      </view>
+      <view wx:for="{{q.options}}" wx:key="en" data-i="{{index}}" bindtap="pick"
+        class="opt-text {{revealed && index === q.answer ? 'right' : ''}} {{revealed && index === picked && picked !== q.answer ? 'wrong' : ''}}">
+        {{item.en}}
+      </view>
+      <button wx:if="{{revealed}}" class="btn-primary act" bindtap="next">下一个</button>
+    </block>
+  </block>
+</view>
