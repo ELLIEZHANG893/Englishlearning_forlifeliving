@@ -1,0 +1,4 @@
+.hidden-canvas { position: fixed; left: -9999px; top: 0; width: 750px; height: 1200px; }
+.poster { width: 100%; border-radius: 24rpx; box-shadow: 0 8rpx 32rpx rgba(80, 50, 20, 0.12); }
+.actions { margin-top: 32rpx; }
+.save { margin-top: 20rpx; }

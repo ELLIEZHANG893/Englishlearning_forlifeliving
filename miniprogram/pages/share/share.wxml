@@ -1,0 +1,44 @@
+<view class="container">
+  <view wx:if="{{error}}" class="empty">
+    <view>{{error}}</view>
+    <button class="btn-primary go" bindtap="goSnap">我也来拍一拍</button>
+  </view>
+
+  <block wx:elif="{{card}}">
+    <image wx:if="{{card.photoUrl}}" class="photo" src="{{card.photoUrl}}" mode="aspectFill" />
+    <view class="card">
+      <view class="en" bindtap="speak">{{card.en}} <text class="speaker">🔊</text></view>
+      <view class="muted">{{card.phonetic.us}}</view>
+      <view class="zh">{{card.zh}}</view>
+    </view>
+
+    <view class="card">
+      <view class="section-title">生活里这么说</view>
+      <view class="example" wx:for="{{card.examples}}" wx:key="en" data-text="{{item.en}}" bindtap="speakText">
+        <view>{{item.en}} <text class="speaker-sm">🔊</text></view>
+        <view class="muted">{{item.zh}}</view>
+      </view>
+    </view>
+
+    <view class="card" wx:if="{{card.collocations.length}}">
+      <view class="section-title">常用搭配</view>
+      <view wx:for="{{card.collocations}}" wx:key="en" class="colloc"><text class="b">{{item.en}}</text> <text class="muted">{{item.zh}}</text></view>
+    </view>
+
+    <view class="card" wx:if="{{card.confusables}}">
+      <view class="section-title">别搞混</view>
+      <view>{{card.confusables.explanation}}</view>
+    </view>
+
+    <view class="card" wx:if="{{card.usUk}}">
+      <view class="section-title">美式 vs 英式</view>
+      <view>美式 <text class="b">{{card.usUk.us}}</text> · 英式 <text class="b">{{card.usUk.uk}}</text></view>
+    </view>
+
+    <button wx:if="{{card.isOwner}}" class="btn-ghost go" bindtap="openMine">在我的卡包里打开</button>
+    <block wx:else>
+      <view class="muted center">看到不会说的东西，拍一下就知道英文</view>
+      <button class="btn-primary go" bindtap="goSnap">我也来拍一拍</button>
+    </block>
+  </block>
+</view>

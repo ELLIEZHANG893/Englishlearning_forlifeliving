@@ -1,0 +1,9 @@
+<view class="container">
+  <canvas type="2d" id="poster" class="hidden-canvas"></canvas>
+  <image wx:if="{{image}}" class="poster" src="{{image}}" mode="widthFix" bindtap="preview" />
+  <view wx:elif="{{!loading}}" class="empty">生成失败，返回重试一下</view>
+  <view class="actions" wx:if="{{image}}">
+    <button class="btn-primary" bindtap="shareImage">分享图片</button>
+    <button class="btn-ghost save" bindtap="save">保存到相册</button>
+  </view>
+</view>
