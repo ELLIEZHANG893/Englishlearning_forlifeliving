@@ -1,0 +1,28 @@
+<view class="container">
+  <view class="seg">
+    <view class="seg-item {{mode === 'category' ? 'seg-on' : ''}}" data-mode="category" bindtap="switchMode">按物品类别</view>
+    <view class="seg-item {{mode === 'place' ? 'seg-on' : ''}}" data-mode="place" bindtap="switchMode">按拍摄地点</view>
+  </view>
+
+  <view class="grid" wx:if="{{system.length}}">
+    <view class="deck" wx:for="{{system}}" wx:key="name" data-name="{{item.name}}" bindtap="openSystem">
+      <view class="deck-icon">{{item.icon}}</view>
+      <view class="deck-name">{{item.name}}</view>
+      <view class="muted">{{item.count}} 个词<text wx:if="{{item.due}}" class="due"> · {{item.due}} 待复习</text></view>
+    </view>
+  </view>
+  <view class="empty" wx:elif="{{loaded}}">
+    <view>卡包还是空的</view>
+    <button class="btn-ghost go" bindtap="goSnap">去拍第一个</button>
+  </view>
+
+  <view class="row between custom-head">
+    <view class="section-title">我的卡包</view>
+    <view class="new" bindtap="createDeck">＋ 新建</view>
+  </view>
+  <view class="card row between" wx:for="{{custom}}" wx:key="deckId" data-id="{{item.deckId}}" data-name="{{item.name}}" bindtap="openCustom">
+    <text>{{item.name}}</text>
+    <text class="muted">{{item.count}} 个词 ›</text>
+  </view>
+  <view class="muted" wx:if="{{!custom.length}}">可以把卡片放进自己建的卡包，比如"出国前要会的"</view>
+</view>

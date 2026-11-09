@@ -1,0 +1,17 @@
+<view class="container">
+  <view class="row between toolbar">
+    <text class="muted">{{list.length}}{{hasMore ? '+' : ''}} 个词</text>
+    <text class="sort" bindtap="toggleSort">{{sort === 'new' ? '最新加入 ↓' : '最早加入 ↑'}}</text>
+  </view>
+  <view class="item card" wx:for="{{list}}" wx:key="_id" data-id="{{item._id}}" bindtap="openWord">
+    <image class="img" src="{{item.fileID}}" mode="aspectFill" lazy-load />
+    <view class="main">
+      <view class="en">{{item.en}}</view>
+      <view class="muted">{{item.detail.phonetic.us}}</view>
+      <view>{{item.zh}}</view>
+    </view>
+    <text class="muted">›</text>
+  </view>
+  <view class="empty" wx:if="{{!loading && !list.length}}">这个卡包还没有单词</view>
+  <view class="muted center" wx:if="{{loading}}">加载中…</view>
+</view>

@@ -1,0 +1,11 @@
+.seg { display: flex; background: var(--line); border-radius: 999rpx; padding: 6rpx; margin-bottom: 32rpx; }
+.seg-item { flex: 1; text-align: center; padding: 14rpx 0; border-radius: 999rpx; color: var(--muted); font-size: 28rpx; }
+.seg-on { background: #fff; color: var(--text); font-weight: 600; box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.06); }
+.grid { display: flex; flex-wrap: wrap; justify-content: space-between; }
+.deck { width: 48%; box-sizing: border-box; background: var(--card); border-radius: 24rpx; padding: 28rpx; margin-bottom: 24rpx; }
+.deck-icon { font-size: 56rpx; }
+.deck-name { font-size: 32rpx; font-weight: 700; margin: 8rpx 0 4rpx; }
+.due { color: var(--accent); }
+.go { width: 300rpx !important; margin-top: 24rpx; }
+.custom-head { margin-top: 24rpx; }
+.new { color: var(--accent); font-size: 28rpx; margin-bottom: 16rpx; }

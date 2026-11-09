@@ -1,5 +1,58 @@
 # 随手拍英语
 
-拍照识别生活物品，告诉你它的英文怎么说、怎么用，并自动收进单词卡包，按记忆曲线复习。
+拍照识别生活物品，告诉你它的英文怎么说、怎么用，并自动收进单词卡包。
 
 - 需求文档：[docs/requirements-v1.0.md](docs/requirements-v1.0.md)
+- 技术栈：微信小程序原生 + 微信云开发（云函数、云数据库、云存储）+ OpenAI 兼容接口的多模态大模型（默认通义千问）
+
+## 目录
+
+```
+miniprogram/            小程序前端
+  pages/index           首页：拍一拍、今日剩余次数、最近学过
+  pages/result          识别结果：图上框出物品，点选要学的；不确定时给候选叫法
+  pages/word            单词卡：音标、美/英发音、例句、搭配、易混词、英美差异、改分类
+  pages/decks           卡包：按物品类别 / 按拍摄地点切换，自定义卡包
+  pages/deck            卡包里的单词列表
+cloudfunctions/api      唯一的云函数，按 action 分发
+  lib/                  额度、模型调用、提示词、结果清洗
+  test/                 单元测试和用内存数据库跑的流程测试
+docs/                   需求文档
+```
+
+## 本地运行
+
+1. 安装 [微信开发者工具](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html)，导入本仓库根目录。
+   - 还没有 AppID 时可以先用「测试号」，但云开发需要正式 AppID。拿到 AppID 后改 `project.config.json` 里的 `appid`。
+2. 在开发者工具里点「云开发」开通环境，把环境 ID 填到 `miniprogram/config.js` 的 `cloudEnv`。
+3. 在云开发控制台的数据库里创建集合：`users`、`cards`、`words`、`decks`、`recognitions`、`point_logs`。
+   权限都设为「仅管理端可读写」，所有读写都通过云函数完成。
+   建议给 `cards` 建索引：`openid + wordKey`、`openid + createdAt`、`openid + category`、`openid + place`；给 `words` 建 `wordKey` 唯一索引。
+4. 右键 `cloudfunctions/api` →「上传并部署：云端安装依赖」。
+5. 在云函数 `api` 的配置里添加环境变量：
+
+   | 变量 | 说明 |
+   |---|---|
+   | `AI_API_KEY` | 必填。阿里云百炼（通义千问）的 API Key |
+   | `AI_BASE_URL` | 选填，默认 `https://dashscope.aliyuncs.com/compatible-mode/v1`。换成豆包等其他 OpenAI 兼容服务时改这里 |
+   | `AI_VISION_MODEL` | 选填，识图模型，默认 `qwen-vl-max` |
+   | `AI_TEXT_MODEL` | 选填，生成单词详情的模型，默认 `qwen-plus` |
+   | `PAYMENT_ENABLED` | 选填，`true` 时显示「购买点数」入口。个人主体阶段保持不填 |
+
+   云函数超时时间建议调到 30 秒（识别需要几秒）。
+6. 把发音域名 `https://dict.youdao.com` 加到小程序后台的 request / downloadFile 合法域名（开发阶段可以在开发者工具里勾选「不校验合法域名」）。
+
+## 测试
+
+```
+cd cloudfunctions/api && npm test
+```
+
+不需要安装依赖，测试用内存替身代替 `wx-server-sdk`，用假模型代替真实接口。
+
+## 计次规则（需求文档 5.7）
+
+- 每人每天 10 次免费识别，北京时间 0 点重置
+- 在用户确认要学、单词成功存入卡包时才扣次数；识别失败、只选了学过的词不扣
+- 一张照片选多个物品只扣 1 次
+- 免费次数用完后扣点数；每人每天最多调用 40 次识别模型（防刷）

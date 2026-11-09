@@ -1,0 +1,38 @@
+<view class="container">
+  <view class="hero">
+    <view class="hero-title">看到不会说的东西？</view>
+    <view class="hero-sub">拍一下，马上知道英文怎么说、怎么用</view>
+    <button class="snap" bindtap="onSnap" disabled="{{busy}}" hover-class="snap-hover">
+      <view class="snap-icon">📷</view>
+      <view>拍一拍</view>
+    </button>
+    <view class="quota" wx:if="{{quota}}">
+      今日剩余 <text class="num">{{quota.freeLeft}}</text> 次
+      <text wx:if="{{quota.points > 0}}"> · 点数 <text class="num">{{quota.points}}</text></text>
+    </view>
+  </view>
+
+  <view class="card row between" bindtap="goDecks">
+    <view class="stat">
+      <view class="stat-num">{{stats.cardCount}}</view>
+      <view class="muted">已收集单词</view>
+    </view>
+    <view class="stat">
+      <view class="stat-num accent">{{stats.dueCount}}</view>
+      <view class="muted">今日待复习</view>
+    </view>
+    <view class="muted">去卡包 ›</view>
+  </view>
+
+  <view wx:if="{{recent.length}}">
+    <view class="section-title">最近学过</view>
+    <view class="recent">
+      <view class="recent-item" wx:for="{{recent}}" wx:key="_id" data-id="{{item._id}}" bindtap="openWord">
+        <image class="recent-img" src="{{item.fileID}}" mode="aspectFill" lazy-load />
+        <view class="recent-en">{{item.en}}</view>
+        <view class="muted">{{item.zh}}</view>
+      </view>
+    </view>
+  </view>
+  <view class="empty" wx:elif="{{loaded}}">还没有单词，先拍一个厨房里的东西试试吧</view>
+</view>

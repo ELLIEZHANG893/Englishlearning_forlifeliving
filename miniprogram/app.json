@@ -1,0 +1,27 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/decks/decks",
+    "pages/result/result",
+    "pages/word/word",
+    "pages/deck/deck"
+  ],
+  "window": {
+    "navigationBarTitleText": "随手拍英语",
+    "navigationBarBackgroundColor": "#FFF8F0",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#FFF8F0"
+  },
+  "tabBar": {
+    "color": "#8A7F75",
+    "selectedColor": "#E8603C",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      { "pagePath": "pages/index/index", "text": "拍一拍" },
+      { "pagePath": "pages/decks/decks", "text": "卡包" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

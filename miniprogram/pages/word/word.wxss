@@ -1,0 +1,25 @@
+.head { display: flex; }
+.thumb { width: 200rpx; height: 200rpx; border-radius: 20rpx; flex-shrink: 0; background: var(--line); }
+.head-main { margin-left: 28rpx; flex: 1; min-width: 0; }
+.en { font-size: 52rpx; font-weight: 800; line-height: 1.2; word-break: break-word; }
+.speaker { font-size: 34rpx; }
+.speaker-sm { font-size: 24rpx; }
+.phonetic { color: var(--muted); margin-top: 6rpx; }
+.zh { font-size: 32rpx; margin-top: 6rpx; }
+.voice { margin-top: 14rpx; }
+.voice-btn { font-size: 24rpx; padding: 4rpx 18rpx; border-radius: 999rpx; border: 2rpx solid var(--line); margin-right: 12rpx; color: var(--muted); }
+.voice-on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.example { padding: 16rpx 0; border-bottom: 2rpx solid var(--line); }
+.example:last-child { border-bottom: none; }
+.ex-en { font-size: 32rpx; }
+.colloc { padding: 10rpx 0; }
+.colloc-en { font-weight: 600; margin-right: 16rpx; }
+.wrap { flex-wrap: wrap; }
+.explain { margin-top: 16rpx; }
+.usuk-col { flex: 1; }
+.usuk-word { font-size: 36rpx; font-weight: 700; }
+.line { padding: 18rpx 0; border-bottom: 2rpx solid var(--line); }
+.created { margin-top: 16rpx; }
+.actions { margin-top: 8rpx; }
+.act { flex: 1; margin: 0 12rpx; font-size: 28rpx; border-radius: 999rpx; }
+.del { background: transparent; color: var(--muted); }

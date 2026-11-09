@@ -1,0 +1,46 @@
+<view class="container" wx:if="{{rec}}">
+  <view class="photo-wrap">
+    <image class="photo" src="{{rec.fileID}}" mode="widthFix" />
+    <block wx:for="{{objects}}" wx:key="en">
+      <view wx:if="{{item.bbox}}" class="box {{item.selected ? 'on' : ''}}" data-i="{{index}}" bindtap="toggle"
+        style="left:{{item.bbox[0] * 100}}%;top:{{item.bbox[1] * 100}}%;width:{{item.bbox[2] * 100}}%;height:{{item.bbox[3] * 100}}%">
+        <text class="box-label">{{item.chosenEn}}</text>
+      </view>
+    </block>
+  </view>
+
+  <block wx:if="{{!saved}}">
+    <view class="hint muted">{{objects.length > 1 ? '找到 ' + objects.length + ' 个物品，点选你想学的' : '确认一下是不是这个'}}</view>
+    <view class="card obj {{item.selected ? 'obj-on' : ''}}" wx:for="{{objects}}" wx:key="en" data-i="{{index}}" bindtap="toggle">
+      <view class="row between">
+        <view>
+          <text class="obj-en">{{item.chosenEn}}</text>
+          <text class="muted"> {{item.zh}}</text>
+        </view>
+        <view class="row">
+          <text class="tag" wx:if="{{item.learnedCardId}}">学过啦</text>
+          <view class="check {{item.selected ? 'check-on' : ''}}">{{item.selected ? '✓' : ''}}</view>
+        </view>
+      </view>
+      <view wx:if="{{item.lowConfidence && item.options.length > 1}}" class="options" catchtap="noop">
+        <view class="muted">不太确定，你拍的可能是：</view>
+        <view class="row wrap">
+          <view wx:for="{{item.options}}" wx:for-item="op" wx:for-index="oi" wx:key="en"
+            class="option {{item.chosenEn === op.en ? 'option-on' : ''}}" data-i="{{index}}" data-en="{{op.en}}" catchtap="chooseName">
+            {{op.en}} {{op.zh}}
+          </view>
+        </view>
+      </view>
+    </view>
+    <button class="btn-primary save" bindtap="onSave" disabled="{{saving || !selectedCount}}">学这 {{selectedCount}} 个</button>
+    <view class="muted center">一张照片只算 1 次识别，学过的词不扣次数</view>
+  </block>
+
+  <block wx:else>
+    <view class="section-title">已存入卡包</view>
+    <view class="card row between" wx:for="{{saved}}" wx:key="cardId" data-id="{{item.cardId}}" bindtap="openWord">
+      <view><text class="obj-en">{{item.en}}</text> <text class="tag" wx:if="{{!item.isNew}}">学过啦</text></view>
+      <text class="muted">查看 ›</text>
+    </view>
+  </block>
+</view>
